@@ -1,6 +1,8 @@
 const express = require("express");
 const server = express();
 const db = require("./db")
+const jwt = require("jsonwebtoken");
+const secret = "secretoDelCodigo";
 
 server.use(express.json());
 server.use(express.urlencoded({extended: false}));
@@ -26,19 +28,58 @@ var users = [
     }
 ]
 
-autorization = (req,res,next)=>{
-    const authToken = req.headers.autorization.split(' ')[1];
-    //const decodedToken = jwt.verify(authToken,secret);
-    //req.authInfo = decodedToken
-    next();
-    
+authorization = (req,res,next)=>{
+    try {
+        const authToken = req.headers.authorization.split(' ')[1];
+        const decodedToken = jwt.verify(authToken,secret);
+        req.authInfo = decodedToken;        
+        next();        
+    } catch (error) {        
+        res.status(401);
+        res.send("Error de autenticación");
+    }    
+}
+isAdmin = (req,res,next)=>{
+    try {
+        const admin = req.authInfo        
+        if(admin.isAdmin == 0){
+            res.status(403)
+            res.send("No eres admin");            
+        }else{
+            res.status(200);            
+            next();
+        }        
+    } catch (error) {
+        res.end();
+    }
 }
 
 server.get("/",()=>{
 })
 server.post("/login", async(req,res)=>{    
-    // const {usename, password} = req.body;
-    // const identificaUsuario = await db.sequelize.query('SELECT username, user_id FROM ')
+    try {        
+        const {nickname, password} = req.body;
+        const identificaUsuario = await db.sequelize.query("SELECT id, nickname, isAdmin FROM `usuarios` WHERE nickname = :nickname AND password = :password",{
+            type: db.sequelize.QueryTypes.SELECT,
+            replacements:{
+                nickname: nickname,
+                password: password
+            }        
+        })
+        if(identificaUsuario.length !== 0){
+            console.log(identificaUsuario);
+            const token = jwt.sign(identificaUsuario[0],secret);
+            res.status(200);
+            res.json(token);
+        } else{
+            res.status(401);
+            res.send("Usuario o contraseña incorrectos")
+        }
+    } catch (error) {
+        console.log(error);
+        res.end();
+    }
+    
 })
 server.post("/registro", async(req,res)=>{    
     const {nickname, nombre, apellido, telefono, direccion, password} = req.body
@@ -95,23 +136,37 @@ server.post("/registro", async(req,res)=>{
     } catch (error) {
         console.log(error);        
         res.end();       
-    }
-    
-    
+    }   
 })
-server.get("/pedido",autorization, (req,res)=>{
-    //Si está logueado muestor los pedidos
-    res.send("Pedidos")
-    //Si no, mostrar error
+server.get("/pedidos",authorization, (req,res)=>{
+    //INSERT INTO pedidos 
+    res.send("Pedidos")    
+});
+server.get("/pedidos/:id", ()=>{
+});
+server.patch("/pedidos/:id", ()=>{
+});
+server.post("/pedidos",()=>{    
+});
+server.delete("/pedidos/:id",()=>{    
+});
+server.get("/platos", authorization, isAdmin, (req,res)=>{
+    //Si está logueado muestro lista de platos
+    res.send("Lista de platos");
+});
+server.get("/platos/:id", (req,res)=>{
+    res.send(`Producto: ${req.params.id}`);
+});
+server.post("/platos",(req,res)=>{
+    res.send("Plato creado");
+});
+server.delete("/platos/:id",(req,res)=>{
+    res.send(`Plato ${req.params.id} borrado`);
+});
+server.patch("/platos/:id",(req,res)=>{
+    res.send(`Plato ${req.params.id} actualizado`);
 })
-server.get("/pedido/:id", ()=>{
-})
-server.put("/pedido/:id", ()=>{
-})
-server.post("/pedido",()=>{    
-})
-server.delete("/pedido/:id",()=>{    
-})
+
 server.post("/admin",()=>{    
 })
 server.get("/carrito",()=>{    
