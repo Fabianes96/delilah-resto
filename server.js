@@ -131,15 +131,31 @@ server.post("/pedidos",()=>{
 });
 server.delete("/pedidos/:id",()=>{    
 });
-server.get("/platos", authorization, async(req,res)=>{
-    //Si está logueado muestro lista de platos
+server.get("/platos", async(req,res)=>{    
     try {        
-        var response = await db.sequelize.query("SELECT nombre, precio, imagen FROM plato", {type: db.sequelize.QueryTypes.SELECT})        
+        let response = await db.sequelize.query("SELECT nombre, precio, imagen FROM plato", {type: db.sequelize.QueryTypes.SELECT})        
         res.json(response)
     } catch (error) {
         console.log(error);
         res.end();
     }
+});
+server.get("/platos/:id", async (req,res)=>{
+    try {
+        const id = req.params.id;
+        let respuesta = await db.sequelize.query("SELECT nombre, precio, imagen FROM plato WHERE id = :id",{
+            replacements:{
+                id: id
+            },
+            type: db.sequelize.QueryTypes.SELECT
+        });
+        res.status(200);
+        res.json(respuesta);
+        
+    } catch (error) {
+        console.log(error);
+        res.end();
+    }    
 });
 server.post("/platos",authorization, isAdmin, async(req,res)=>{
     try {
@@ -185,9 +201,6 @@ server.post("/platos",authorization, isAdmin, async(req,res)=>{
         res.end();
     }
 })
-server.get("/platos/:id", (req,res)=>{
-    res.send(`Producto: ${req.params.id}`);
-});
 server.delete("/platos/:id",authorization,isAdmin,async(req,res)=>{
     try {
         const id = req.params.id;
