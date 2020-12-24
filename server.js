@@ -2,8 +2,10 @@ const express = require("express");
 const server = express();
 const db = require("./db")
 const jwt = require("jsonwebtoken");
+const cors = require("cors");
 const secret = "secretoDelCodigo";
 
+server.use(cors());
 server.use(express.json());
 server.use(express.urlencoded({extended: false}));
 
@@ -129,7 +131,7 @@ server.post("/pedidos",()=>{
 });
 server.delete("/pedidos/:id",()=>{    
 });
-server.get("/platos", authorization, isAdmin, async(req,res)=>{
+server.get("/platos", authorization, async(req,res)=>{
     //Si está logueado muestro lista de platos
     try {        
         var response = await db.sequelize.query("SELECT nombre, precio, imagen FROM plato", {type: db.sequelize.QueryTypes.SELECT})        
@@ -139,17 +141,158 @@ server.get("/platos", authorization, isAdmin, async(req,res)=>{
         res.end();
     }
 });
+server.post("/platos",authorization, isAdmin, async(req,res)=>{
+    try {
+        const {nombre, precio, imagen} = req.body;
+        if(nombre === ""){
+            res.status(400);
+            res.json("Debe ingresar un nombre");
+        }
+        if(nombre.length > 99){
+            res.status(400);
+            res.json("Nombre demasiado largo");
+        }        
+        if(isNaN(precio) || precio < 0){
+            res.status(400);
+            res.json("Debe ingresar un número valido")
+        }
+        if(imagen !== "" && imagen !== undefined)
+        {            
+            let consulta = await db.sequelize.query("INSERT INTO plato (nombre, precio, imagen) VALUES (:nombre, :precio, :imagen)",{
+                replacements:{
+                    nombre: nombre,
+                    precio: precio,
+                    imagen: imagen
+                },
+                type: db.sequelize.QueryTypes.INSERT
+            })
+            res.status(201);
+            res.json(consulta);
+        }else{
+            let consulta = await db.sequelize.query("INSERT INTO plato (nombre, precio) VALUES (:nombre, :precio)",{
+                replacements:{
+                    nombre: nombre,
+                    precio: precio,                    
+                    type: db.sequelize.QueryTypes.INSERT
+                }, 
+            });
+            res.status(201);
+            res.json(consulta);
+        }
+        
+    } catch (error) {
+        console.log(error);        
+        res.end();
+    }
+})
 server.get("/platos/:id", (req,res)=>{
     res.send(`Producto: ${req.params.id}`);
 });
-server.post("/platos",(req,res)=>{
-    res.send("Plato creado");
+server.delete("/platos/:id",authorization,isAdmin,async(req,res)=>{
+    try {
+        const id = req.params.id;
+        let respuesta = db.sequelize.query("DELETE FROM plato WHERE id = :id",{
+            replacements: {
+                id: id
+            },
+            type: db.sequelize.QueryTypes.DELETE
+        });
+        res.status(200);
+        console.log("Plato borrado");
+        res.json(respuesta);
+    } catch (error) {
+        console.log(error);
+        res.end();
+    }        
 });
-server.delete("/platos/:id",(req,res)=>{
-    res.send(`Plato ${req.params.id} borrado`);
-});
-server.patch("/platos/:id",(req,res)=>{
-    res.send(`Plato ${req.params.id} actualizado`);
+server.patch("/platos/:id",authorization, isAdmin, async (req,res)=>{
+    try {        
+        const {nombre, precio, imagen} = req.body;
+        const consulta = db.sequelize;
+        const id = req.params.id;
+        const consultaInicio = "UPDATE plato SET";
+        const consultaFin = " WHERE id = :id"        
+        if(nombre && precio && imagen){
+            let respuesta = consulta.query(consultaInicio.concat(" nombre = :nombre, precio = :precio, imagen = :imagen").concat(consultaFin),{
+                replacements:{
+                    id: id,
+                    nombre: nombre,
+                    precio: precio,
+                    imagen: imagen
+                },
+                type: db.sequelize.QueryTypes.UPDATE
+            });
+            res.status(200);
+            res.json(respuesta);
+        }else if(nombre && precio){ 
+            let respuesta = consulta.query(consultaInicio.concat(" nombre = :nombre, precio = :precio").concat(consultaFin),{
+                replacements:{
+                    id: id,
+                    nombre: nombre,
+                    precio: precio,                    
+                },
+                type: db.sequelize.QueryTypes.UPDATE
+            });
+            res.status(200);
+            res.json(respuesta);
+        }else if(nombre && imagen){
+            let respuesta = consulta.query(consultaInicio.concat(" nombre = :nombre, imagen = :imagen").concat(consultaFin),{
+                replacements:{
+                    id: id,
+                    nombre: nombre,               
+                    imagen: imagen
+                },
+                type: db.sequelize.QueryTypes.UPDATE
+            });
+            res.status(200);
+            res.json(respuesta);
+        }else if(nombre){
+            let respuesta = consulta.query(consultaInicio.concat(" nombre = :nombre").concat(consultaFin),{
+                replacements:{
+                    id: id,
+                    nombre: nombre,                                   
+                },
+                type: db.sequelize.QueryTypes.UPDATE
+            });
+            res.status(200);
+            res.json(respuesta);
+        }else if(precio && imagen){
+            let respuesta = consulta.query(consultaInicio.concat(" precio = :precio, imagen = :imagen").concat(consultaFin),{
+                replacements:{
+                    id: id,
+                    precio: precio,
+                    imagen: imagen
+                },
+                type: db.sequelize.QueryTypes.UPDATE
+            });
+            res.status(200);
+            res.json(respuesta);
+        }else if(precio){
+            let respuesta = consulta.query(consultaInicio.concat(" precio = :precio").concat(consultaFin),{
+                replacements:{
+                    id: id,
+                    precio: precio
+                },
+                type: db.sequelize.QueryTypes.UPDATE
+            });
+            res.status(200);
+            res.json(respuesta);
+        }else if(imagen){
+            let respuesta = consulta.query(consultaInicio.concat(" imagen = :imagen").concat(consultaFin),{
+                replacements:{
+                    id: id,
+                    imagen: imagen
+                },
+                type: db.sequelize.QueryTypes.UPDATE
+            });
+            res.status(200);
+            res.json(respuesta);
+        }
+    } catch (error) {
+        console.log(error);
+        res.end();
+    }
+
 })
 
 server.get("/usuarios", async(req,res)=>{
