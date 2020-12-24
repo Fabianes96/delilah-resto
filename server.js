@@ -7,27 +7,6 @@ const secret = "secretoDelCodigo";
 server.use(express.json());
 server.use(express.urlencoded({extended: false}));
 
-var users = [
-    {
-        nombreUsuario: "Fabianes96",
-        nombre: "Fabian Esteban",
-        apellido: "Higuita Alvarez",
-        telefono: 3045602226,
-        dirEnvio: "Calle 79B #87-42",
-        password: "1234"
-
-    },
-    {
-        nombreUsuario: "usuario123",
-        nombre: "Usuario",
-        apellido: "de prueba uno",
-        telefono: 235353452,
-        dirEnvio: "Calle 46",
-        password: "1234"
-
-    }
-]
-
 authorization = (req,res,next)=>{
     try {
         const authToken = req.headers.authorization.split(' ')[1];
@@ -138,7 +117,7 @@ server.post("/registro", async(req,res)=>{
         res.end();       
     }   
 })
-server.get("/pedidos",authorization, (req,res)=>{
+server.get("/pedidos",authorization, isAdmin, (req,res)=>{
     //INSERT INTO pedidos 
     res.send("Pedidos")    
 });
@@ -150,9 +129,15 @@ server.post("/pedidos",()=>{
 });
 server.delete("/pedidos/:id",()=>{    
 });
-server.get("/platos", authorization, isAdmin, (req,res)=>{
+server.get("/platos", authorization, isAdmin, async(req,res)=>{
     //Si está logueado muestro lista de platos
-    res.send("Lista de platos");
+    try {        
+        var response = await db.sequelize.query("SELECT nombre, precio, imagen FROM plato", {type: db.sequelize.QueryTypes.SELECT})        
+        res.json(response)
+    } catch (error) {
+        console.log(error);
+        res.end();
+    }
 });
 server.get("/platos/:id", (req,res)=>{
     res.send(`Producto: ${req.params.id}`);
@@ -167,6 +152,11 @@ server.patch("/platos/:id",(req,res)=>{
     res.send(`Plato ${req.params.id} actualizado`);
 })
 
+server.get("/usuarios", async(req,res)=>{
+    let response = await db.sequelize.query("SELECT * FROM usuarios",{type: db.sequelize.QueryTypes.SELECT});
+    console.log(response);
+    res.send("Lista de usuarios")
+})
 server.post("/admin",()=>{    
 })
 server.get("/carrito",()=>{    
