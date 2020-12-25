@@ -13,7 +13,7 @@ authorization = (req,res,next)=>{
     try {
         const authToken = req.headers.authorization.split(' ')[1];
         const decodedToken = jwt.verify(authToken,secret);
-        req.authInfo = decodedToken;        
+        req.authInfo = decodedToken;              
         next();        
     } catch (error) {        
         res.status(401);
@@ -34,7 +34,22 @@ isAdmin = (req,res,next)=>{
         res.end();
     }
 }
-
+noUserNoAdmin = (req,res,next)=>{
+    try {
+        const id = req.params.id;
+        if(id !== req.authInfo.id && req.authInfo.isAdmin !== 1){
+            res.status(401);
+            res.json("No puede realizar esta acción");        
+        }else{
+            res.status(200);
+            next()
+        }
+        
+    } catch (error) {
+        console.log(error);
+        res.end()
+    }
+}
 server.get("/",()=>{
 })
 server.post("/login", async(req,res)=>{    
@@ -307,12 +322,148 @@ server.patch("/platos/:id",authorization, isAdmin, async (req,res)=>{
     }
 
 })
-
-server.get("/usuarios", async(req,res)=>{
-    let response = await db.sequelize.query("SELECT * FROM usuarios",{type: db.sequelize.QueryTypes.SELECT});
-    console.log(response);
-    res.send("Lista de usuarios")
+server.get("/usuarios", authorization, isAdmin, async(req,res)=>{
+    let response = await db.sequelize.query("SELECT * FROM usuarios",{
+        type: db.sequelize.QueryTypes.SELECT
+    });
+    console.log("Lista de usuarios");
+    res.status(200);
+    res.json(response);
 })
+server.get("/usuarios/:id",authorization, noUserNoAdmin,async(req,res)=>{
+    try {
+        const id = req.params.id;        
+        if(req.authInfo.isAdmin === 1){
+            let consulta = await db.sequelize.query("SELECT * FROM usuarios WHERE id = :id",{
+                replacements:{
+                    id: id
+                }, type: db.sequelize.QueryTypes.SELECT
+            });
+            res.status(200);
+            console.log("Usuario devuelto con exito");            
+            res.json(consulta);
+        } else{
+            let consulta = await db.sequelize.query("SELECT nickname, nombre, apellido, telefono, direccion, password FROM usuarios WHERE id = :id",{
+                replacements:{
+                    id: id
+                }, type: db.sequelize.QueryTypes.SELECT
+            });
+            res.status(200);
+            res.json(consulta);
+        }
+    } catch (error) {
+        console.log(error);
+        res.end();
+    }
+
+});
+server.patch("/usuarios/:id", authorization, noUserNoAdmin,async(req,res)=>{
+    try {        
+        const id = req.params.id;    
+        const {nickname,nombre,apellido,telefono,direccion,password, isAdmin} = req.body;
+        
+        if(!nickname  || nickname.length<3){
+            res.status(400);
+            res.json("Nickname no ingresado o demasiado corto");
+            return
+        }
+        if(!nombre || nombre ===""){
+            res.status(400);
+            res.json("Debe ingresar el nombre");
+            return
+        }
+        if(!apellido || apellido ===""){
+            res.status(400);
+            res.json("Debe ingresar el apellido");
+            return
+        }
+        if(!telefono || telefono ===""){
+            res.status(400);
+            res.json("Debe ingresar el teléfono");
+            return
+        }
+        if(isNaN(telefono)){
+            res.status(400);
+            res.json("Debe ingresar solo números");
+            return
+        }
+        if(!direccion || direccion ===""){
+            res.status(400);
+            res.json("Debe ingresar la dirección");
+            return
+        }
+        if(!password || password ===""){
+            res.status(400);
+            res.json("Debe ingresar la contraseña");
+            return
+        }else if(password.length < 4){
+            res.status(400);
+            res.json("La contraseña es muy corta");
+            return
+        }
+        if(req.isAdmin === 1){
+            if(!isAdmin){
+                res.status(400);
+                res.json("Debe asignar un valor para determinar si el usuario es administrador o no");
+                return
+            }
+            if(isNaN(isAdmin)){
+                res.status(400);
+                res.json("Debe asignar un valor numerico para determinar si el usuario es administrador o no");
+                return
+            }
+            let consulta = await db.sequelize.query("UPDATE usuarios SET nickname = :nickname, nombre = :nombre, apellido = :apellido, telefono = :telefono, direccion = :direccion, password = :password, isAdmin = :isAdmin WHERE id = :id ", {
+                replacements: {
+                    nickname: nickname,
+                    nombre: nombre,
+                    apellido: apellido,
+                    telefono: telefono,
+                    direccion: direccion,
+                    password: password,
+                    isAdmin: isAdmin
+                }, type: db.sequelize.QueryTypes.UPDATE
+            });
+            res.status(200);
+            console.log("Usuario actualizado correctamente");
+            res.json(consulta);
+        }else{
+            let consulta = await db.sequelize.query("UPDATE usuarios SET nickname = :nickname, nombre = :nombre, apellido = :apellido, telefono = :telefono, direccion = :direccion, password = :password WHERE id = :id ", {
+                replacements: {
+                    id: id,
+                    nickname: nickname,
+                    nombre: nombre,
+                    apellido: apellido,
+                    telefono: telefono,
+                    direccion: direccion,
+                    password: password,                    
+                }, type: db.sequelize.QueryTypes.UPDATE
+            });
+            res.status(200);
+            console.log("Usuario actualizado correctamente");
+            res.json(consulta);
+        }
+    } catch (error) {
+        console.log(error);
+        res.end();
+    }
+});
+server.delete("/usuarios/:id", authorization, noUserNoAdmin, async(req,res)=>{
+    try {
+        const id = req.params.id;
+        let consulta = await db.sequelize.query("DELETE FROM usuarios WHERE id = :id", {
+            replacements: {
+                id: id
+            }, type: db.sequelize.QueryTypes.DELETE
+        });
+        res.status(200);
+        console.log("Usuario eliminado");
+        res.json(consulta);        
+    } catch (error) {
+        console.log(error);
+        res.end();
+    }
+});
+
 server.post("/admin",()=>{    
 })
 server.get("/carrito",()=>{    
