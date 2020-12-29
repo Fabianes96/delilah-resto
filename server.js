@@ -134,9 +134,34 @@ server.post("/registro", async(req,res)=>{
         res.end();       
     }   
 })
-server.get("/pedidos",authorization, isAdmin, (req,res)=>{
-    //INSERT INTO pedidos 
-    res.send("Pedidos")    
+server.get("/pedidos",authorization, isAdmin, async(req,res)=>{    
+    try {
+        let consulta = await db.sequelize.query(`
+        SELECT estadosPedidos.estado,
+            fecha,
+            pedidos.id AS numero,
+            Forma AS forma_de_pago,
+            total,
+            nombre,
+            apellido,
+            direccion
+            FROM pedidos
+            JOIN usuarios 
+            ON pedidos.usuario_id = usuarios.id
+            JOIN formasDePago
+            ON forma_pago = formasDePago.id
+            JOIN estadosPedidos
+            ON pedidos.estado = estadosPedidos.id
+        `,{
+            type: db.sequelize.QueryTypes.SELECT
+        });
+        console.log("Lista de pedidos");
+        res.status(200);
+        res.json(consulta);
+    } catch (error) {
+        console.log(error);
+        res.end();
+    }
 });
 server.get("/pedidos/:id", ()=>{
 });
