@@ -4,7 +4,7 @@ const server = express();
 const db = require("./db");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
-const MD5 = require("./utils.js")
+const utils = require("./utils.js")
 const secret = "jfausifuasoifjaewwtgc";
 
 //Middlewares
@@ -40,7 +40,7 @@ isAdmin = (req, res, next) => {
 };
 noUserNoAdmin = (req, res, next) => {
   try {    
-    const id = req.params.id;
+    const id = req.params.id;    
     if (id != req.authInfo.id && req.authInfo.isAdmin !== 1) {
       res.status(401);
       res.json("No puede realizar esta acción");
@@ -53,7 +53,6 @@ noUserNoAdmin = (req, res, next) => {
     res.end();
   }
 };
-
 //Enpoints
 server.get("/", (req,res) => {
   res.status(200);
@@ -63,7 +62,7 @@ server.get("/", (req,res) => {
 server.post("/login", async (req, res) => {
   try {
     const { nickname, password } = req.body;    
-    const pass = MD5(password);
+    const pass = utils.MD5(password);
     const identificaUsuario = await db.sequelize.query(
       "SELECT id, nickname, isAdmin FROM `usuarios` WHERE nickname = :nickname AND password = :password",
       {
@@ -90,7 +89,8 @@ server.post("/login", async (req, res) => {
 });
 //Registro
 server.post("/registro", async (req, res) => {
-  const {nickname,nombre,apellido,telefono,direccion,password,} = req.body;
+  const {nickname,nombre,apellido,telefono,direccion,password,} = req.body;  
+  console.log(await utils.isNicknameAvailable(nickname));
   if (nickname.length < 3 || nickname.length > 25) {
     res.status(400);
     res.json("Nombre de usuario incorrecto (Muy corto o muy largo)");
@@ -99,6 +99,10 @@ server.post("/registro", async (req, res) => {
     res.status(400);
     res.json("Debe ingresar su nombre de usuario");
     return;
+  } else if(await utils.isNicknameAvailable(nickname) === false){    
+    res.status(400);
+    res.json("El usuario ingresado ya existe. Pruebe con otro");
+    return
   }
   if (!nombre || nombre == "") {
     res.status(400);
@@ -130,7 +134,7 @@ server.post("/registro", async (req, res) => {
     return;
   }
   try {
-    const pass = MD5(password);    
+    const pass = utils.MD5(password);    
     var respuesta = await db.sequelize.query(
       "INSERT INTO usuarios (nickname, nombre, apellido, telefono, direccion, password, isAdmin) VALUES (:nickname, :nombre, :apellido, :telefono, :direccion, :password, 0)",
       {
@@ -191,9 +195,19 @@ server.get("/pedidos", authorization, isAdmin, async (req, res) => {
     res.json("Ha ocurrido un error inesperado");
   }
 });
-server.get("/pedidos/:id", authorization, noUserNoAdmin, async (req, res) => {
+server.get("/pedidos/:id", authorization, async (req, res) => {
   try {
-    const id = req.params.id;
+    const id = req.params.id;    
+    let consultaPedido = await db.sequelize.query("SELECT usuario_id FROM pedidos WHERE id = :id",{
+      replacements: {
+        id:id
+      },type: db.sequelize.QueryTypes.SELECT
+    })    
+    if(consultaPedido[0].usuario_id != req.authInfo.id && req.authInfo.isAdmin !== 1){
+      res.status(403);
+      res.json("No puede realizar esta acción");
+      return
+    }
     let consulta = await db.sequelize.query(
       `
         SELECT estadosPedidos.estado,
@@ -225,6 +239,7 @@ server.get("/pedidos/:id", authorization, noUserNoAdmin, async (req, res) => {
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
+    
     console.log("Pedido #", id);
     res.status(200);
     res.json(consulta);
@@ -280,6 +295,7 @@ server.post("/pedidos", authorization, async (req, res) => {
         }
       );
     });
+    console.log("Pedido realizado con exito");
     res.status(201);
     res.json(consulta);
   } catch (error) {
@@ -363,17 +379,24 @@ server.get("/platos/:id", async (req, res) => {
 server.post("/platos", authorization, isAdmin, async (req, res) => {
   try {
     const { nombre, precio, imagen } = req.body;
-    if (nombre === "") {
+    if (!nombre || nombre === "") {
       res.status(400);
       res.json("Debe ingresar un nombre");
+      return
     }
     if (nombre.length > 99) {
       res.status(400);
       res.json("Nombre demasiado largo");
+      return
     }
-    if (isNaN(precio) || precio < 0) {
+    if(!precio){
       res.status(400);
-      res.json("Debe ingresar un número valido");
+      res.json("Debe ingresar un precio");
+      return
+    } else if (isNaN(precio) || precio < 0) {
+      res.status(400);
+      res.json("Debe ingresar un número para el precio valido");
+      return
     }
     if (imagen !== "" && imagen !== undefined) {
       let consulta = await db.sequelize.query(
@@ -430,6 +453,11 @@ server.delete("/platos/:id", authorization, isAdmin, async (req, res) => {
 server.patch("/platos/:id", authorization, isAdmin, async (req, res) => {
   try {
     const { nombre, precio, imagen } = req.body;
+    if(!nombre && !precio && !imagen){
+      res.status(400);
+      res.json("Debe ingresar el nombre, precio o imagen");
+      return
+    }
     const consulta = db.sequelize;
     const id = req.params.id;
     const consultaInicio = "UPDATE plato SET";
@@ -603,6 +631,10 @@ server.patch("/usuarios/:id",authorization,noUserNoAdmin,async (req, res) => {
         res.status(400);
         res.json("Nickname no ingresado o demasiado corto");
         return;
+      } else if(await utils.isNicknameAvailable(nickname) === false){    
+        res.status(400);
+        res.json("El usuario ingresado ya existe. Pruebe con otro");
+        return
       }
       if (!nombre || nombre === "") {
         res.status(400);
@@ -633,7 +665,7 @@ server.patch("/usuarios/:id",authorization,noUserNoAdmin,async (req, res) => {
         res.json("La contraseña es muy corta");
         return;
       }
-      const pass = MD5(password);
+      const pass = utils.MD5(password);
       if (req.isAdmin === 1) {
         if (!isAdmin) {
           res.status(400);

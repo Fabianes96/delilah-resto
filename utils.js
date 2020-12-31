@@ -1,3 +1,5 @@
+const { response } = require("express");
+const db = require("./db");
 function MD5(string) {
     function RotateLeft(lValue, iShiftBits) {
       return (lValue << iShiftBits) | (lValue >>> (32 - iShiftBits));
@@ -227,5 +229,20 @@ function MD5(string) {
   
     return temp.toLowerCase();
   }
-  
-  module.exports = MD5;
+  async function isNicknameAvailable(nickname){
+    try {      
+      let consulta = await db.sequelize.query("SELECT nickname FROM usuarios WHERE nickname = :nickname",{
+        type: db.sequelize.QueryTypes.SELECT,
+        replacements:{
+          nickname : nickname
+        }
+      })
+      if (consulta.length !== 0){
+        return false
+      }      
+      return true;
+    } catch (error) {
+      console.log(error);      
+    }
+  }
+  module.exports = {MD5, isNicknameAvailable};
