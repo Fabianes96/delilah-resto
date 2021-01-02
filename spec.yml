@@ -1,0 +1,675 @@
+openapi: 3.0.0
+info:
+  version: '1.0'
+  title: Delilah Resto
+  description: >-
+    API del proyecto Delilah resto que permite obtener la información de los
+    productos, pedidos y usuarios del restaurante.
+  contact:
+    name: Fabián Esteban Higuita Álvarez
+    email: fabianes1996@gmail.com
+  license:
+    name: "Apache 2.0"
+    url: "http://www.apache.org/licenses/LICENSE-2.0.html"
+
+servers:
+  - url: https://fabian-delilah-resto.herokuapp.com/
+    description: Servidor de la aplicación
+tags: 
+  - name: Platos
+  - name: Pedidos
+  - name: Usuarios
+  - name: Login
+  - name: Registro
+  
+paths:
+  /platos:
+    get:
+      tags:
+      - Platos
+      description: Permite obtener la lista de productos del restaurante con sus caracteristicas
+      summary: Lista de platos
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/Platos'
+    post:
+      tags: 
+      - Platos
+      description: Permite añadir un nuevo producto/plato a la base de datos
+      summary: Agregar un plato
+      requestBody:
+        description: Formato de objeto para agregar un nuevo producto
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Platos' 
+      responses:
+        201:
+          description: Producto agregado con exito
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: number
+              example: [19, 1]
+        400:
+          description: Falló alguna validación
+          content:
+            application/json:
+              example: Debe ingresar un nombre
+        401:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: Debe autenticarse para realizar esta acción
+        403:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: No puede realizar esta acción        
+      
+  /platos/{id}:
+    get:
+      description: Obtener información de un plato en especifico a través de su ID
+      summary: "Obtener un plato"
+      tags: 
+      - Platos
+      parameters: 
+      - in: path
+        name: id
+        required: true
+        description: Id del plato
+        schema:
+          type: number
+          example: 2
+      responses:
+        200:
+          description: Successful request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Platos'
+        404:
+          description: Plato no encontrado
+          content:
+            application/json:
+              schema:
+                type: "string"
+                example: "El plato no fue encontrado"
+    patch:
+      description: Actualiza un información de un plato en especifico según su ID
+      summary: "Actualizar plato"
+      tags: 
+      - Platos
+      parameters: 
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: number
+          example: 2
+      requestBody:
+        description: Objeto de actualizacion
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nombre: 
+                  type: string
+                  example: Ensalada de frutas
+                precio:
+                  type: number
+                  format: int32
+                  example: 300
+      responses:
+        200:
+          description: Plato actualizado
+          content:
+            application/json:
+              schema:
+                type: object
+        400:
+          description: Falló alguna validación
+          content:
+            application/json:
+              example: Debe ingresar el nombre, precio o imagen
+        401:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: Debe autenticarse para realizar esta acción
+        403:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: "No puede realizar esta acción"
+        404:
+          description: Plato no encontrado
+          content:
+            application/json:
+              schema:
+                type: "string"
+                example: "El plato no fue encontrado"
+    delete:
+      description: Elimina un plato de la base de datos según su ID
+      summary: Eliminar un plato
+      tags: 
+      - Platos
+      parameters: 
+      - in: path
+        name: id
+        description: id del plato
+        required: true
+        schema:
+          type: number
+          example: 19
+      responses:
+        200:
+          description: Plato eliminado
+          content:
+            application/json:
+              schema:
+                type: "object"
+        404:
+          description: Plato no encontrado
+          content:
+            application/json:
+              schema:
+                type: "string"
+                example: "El plato no fue encontrado"
+        403:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: "No puede realizar esta acción"
+  /pedidos:
+    get:
+      description: Obtiene la lista de todos los pedidos realizados
+      summary: Lista de pedidos
+      tags: 
+      - Pedidos
+      responses:
+        200:
+          description: Lista de pedidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pedidos'
+        401:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: Debe autenticarse para realizar esta acción
+        403:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: No puede realizar esta acción
+    post:
+      description: Permite realizar un pedido con los platos deseados y añadirlo en base de datos
+      summary: Realizar y agregar un pedido
+      tags: 
+      - Pedidos
+      requestBody:
+        description: Formato del objeto para realizar un pedido. "id_pago" y "forma_pago" hacen referencia a los id del plato y la forma de pago respectivamente por lo que son valores numericos
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PedidosPost'      
+      responses:
+        201:
+          description: Pedido realizado con exito
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: number
+              example: [16,1]
+        400:
+          description: Falló alguna validación
+          content:
+            application/json:
+              example: El formato del detalle es incorrecto
+        401:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: Debe autenticarse para realizar esta acción
+  /pedidos/{id}:
+    get:
+      description: Obtener información de un pedido conociendo su ID
+      summary: Obtener un pedido
+      tags: 
+      - Pedidos
+      parameters: 
+      - in: path
+        name: id
+        required: true
+        description: Id del pedido
+        schema:
+          type: number
+          example: 3
+      responses:
+        200:
+          description: Pedido encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pedidos'
+        401:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: Debe autenticarse para realizar esta acción
+        403:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: No puede realizar esta acción
+        404:
+          description: Plato no encontrado
+          content:
+            application/json:
+              schema:
+                type: string
+                example: El plato no fue encontrado
+    patch:
+      description: Actualiza el estado de un pedido en especifico
+      summary: Actualizar estado de un pedido
+      tags: 
+      - Pedidos
+      parameters: 
+      - in: path
+        name: id
+        required: true
+        description: id del pedido
+        schema:
+          type: number
+          example: 3
+      requestBody:
+        description: Objeto de actualizacion. Se le debe asignar un número que corresponde al ID de la tabla de estados
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                estado: 
+                  type: number
+                  example: 6
+      responses:
+        200:
+          description: Estado del pedido actualizado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: number
+              example: [null,1]
+        400:
+          description: Falló alguna validación
+          content:
+            applitcation/json:
+              example: Estado debe ser un valor númerico
+        401:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: Debe autenticarse para realizar esta acción
+        404:
+          description: Plato no encontrado
+          content:
+            application/json:
+              schema:
+                type: string
+                example: El pedido no fue encontrado
+        403:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: No puede realizar esta acción
+    delete:
+      description: Elimina un pedido de la base de datos
+      summary: Eliminar pedido
+      tags: 
+      - Pedidos
+      parameters: 
+      - in: path
+        name: id
+        description: id del pedido
+        required: true
+        schema:
+          type: number
+          example: 16
+      responses:
+        200:
+          description: Pedido eliminado exitosamente
+        404:
+          description: Pedido no encontrado
+          content:
+            application/json:
+              schema:
+                type: string
+                example: El pedido no existe
+        403:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: No puede realizar esta acción
+  /usuarios:
+    get:
+      description: Obtiene la lista de todos los usuarios registrados en la aplicación
+      summary: Lista de usuarios
+      tags: 
+      - Usuarios
+      responses:
+        200:
+          description: Lista de usuarios
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuarios'
+        403:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: No puede realizar esta acción
+  /usuarios/{id}:
+    get:
+      description: Obtener información de un usuario conociendo su ID
+      summary: Obtener un usuario
+      tags: 
+      - Usuarios
+      parameters: 
+      - in: path
+        name: id
+        required: true
+        description: Id del usuario
+        schema:
+          type: number
+          example: 8
+      responses:
+        200:
+          description: Usuario devuelto con éxito
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Usuarios'
+        403:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: No puede realizar esta acción
+        404:
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                type: string
+                example: El usuario no fue encontrado
+    patch:
+      description: Actualiza la información suministada de un usuario
+      summary: Actualizar usuario
+      tags: 
+      - Usuarios
+      parameters: 
+      - in: path
+        name: id
+        required: true
+        description: id del usuario
+        schema:
+          type: number
+          example: 8
+      requestBody:
+        description: Objeto de actualización.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Usuarios'
+              
+      responses:
+        200:
+          description: Usuario actualizado correctamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: number
+              example: [null,1]
+        400:
+          description: Falló alguna validación
+          content:
+            application/json:
+              example: Debe ingresar el nombre
+        
+        404:
+          description: Plato no encontrado
+          content:
+            application/json:
+              schema:
+                type: string
+                example: El usuario no fue encontrado
+        403:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: No puede realizar esta acción
+    delete:
+      description: Elimina un usuario de la base de datos
+      summary: Eliminar usuario
+      tags: 
+      - Usuarios
+      parameters: 
+      - in: path
+        name: id
+        description: id del usuario
+        required: true
+        schema:
+          type: number
+          example: 20
+      responses:
+        200:
+          description: Usuario eliminado
+        404:
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                type: string
+                example: El usuario no existe
+        403:
+          description: Permiso denegado
+          content:
+            applitcation/json:
+              example: No puede realizar esta acción
+  /login:
+    post:
+      description: Permite iniciar sesión con las credenciales del usuario
+      summary: Inicio de sesión
+      tags: 
+      - Login
+      requestBody:
+        description: Objeto para login.
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nickname:
+                  type: string
+                  example: usuario_admin
+                password:
+                  type: string
+                  example: admin
+      responses:
+        200:
+          description: Inicio de sesión satisfactorio (JWT devuelto)
+          content:
+            application/json:
+              schema:
+                type: string
+                example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Miwibmlja25hbWUiOiJ1c3VhcmlvX2FkbWluIiwiaXNBZG1pbiI6MSwiaWF0IjoxNjA5NTQzOTM1fQ.GjliZIFbqybAEo5ydIq6GU06YnxqehZjBUUxPEW_6J4
+        401:
+          description: Autenticación fallida
+          content:
+            application/json:
+              example: Usuario o contraseña incorrectos
+          
+  /registro:
+    post:
+      tags: 
+      - Registro
+      description: Permite registrar un nuevo usuario al sistema
+      summary: Registrar usuario
+      requestBody:
+        description: Objeto para el registro.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Registro'
+      responses:
+        201:
+          description: Usuario registrado
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: number
+              example: [20, 1]
+        400:
+          description: Falló alguna validación
+          content:
+            application/json:
+              example: Debe ingresar su nombre de usuario
+components:
+  schemas:
+    Platos:
+      type: object
+      properties:
+        nombre:
+            type: string
+            example: Veggie Avocado
+        precio:
+            type: number
+            format: int32
+            example: 300
+        imagen:
+            type: string
+            example: "./imagenes/avo-sandwich.png"
+    Pedidos:
+      type: array
+      items:
+        properties:
+          estado:
+            type: string
+            example: Nuevo
+          fecha:
+            example: "2020-12-01T15:57:31.000Z"
+          numero: 
+            type: number
+            example: 3
+          detalle:
+            type: string
+            example: 1X Sandwich veggie,1X Hamburguesa clásica
+          forma_de_pago: 
+            type: string
+            example: Efectivo
+          total:
+            type: number
+            example: 660
+          usuario:
+            type: string
+            example: Freddie Mercury
+          direccion:
+            type: string
+            example: 1 Logan PIKensington, London W8 6DE, UK
+    PedidosPost:
+      type: object
+      properties:
+        detalle:
+            type: array
+            items:
+              properties:
+                id_plato:
+                  type: number
+                cantidad:
+                  type: number
+            example: 
+            - id_plato: 3
+              cantidad: 1
+            - id_plato: 7
+              cantidad: 2
+        forma_pago:
+            type: number
+            example: 1
+        total:
+          type: number
+          example: 1020
+    Usuarios:
+      type: array
+      items:
+        properties:
+          id:
+            type: number
+            example: 8
+          nickname:
+            type: string
+            example: queen_freddie
+          nombre: 
+            type: string
+            example: Freddie
+          apellido:
+            type: string
+            example: Mercury
+          telefono:
+            type: string
+            example: +44 7712345678
+          direccion:
+            type: string
+            example: 1 Logan PIKensington, London W8 6DE, UK
+          password:
+            type: string
+            example: ae768456835750ee8c3a3d2f15a6b00e
+          isAdmin:
+            type: number
+            example: 0
+    Registro:
+      type: object
+      properties:
+        nickname:
+          type: string
+          example: usuario_prueba
+        nombre: 
+          type: string
+          example: Usuario
+        apellido:
+          type: string
+          example: De Prueba
+        telefono:
+          type: string
+          example: +23 32468742342
+        direccion:
+          type: string
+          example: Carrera ficticia 123
+        password:
+          type: string
+          example: "1234567890"
+externalDocs:
+  description: "README.MD"
+  url: "https://github.com/Fabianes96/delilah-resto"
+        
+      
+                
+      
+            

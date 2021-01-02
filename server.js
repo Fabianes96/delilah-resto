@@ -17,10 +17,11 @@ authorization = (req, res, next) => {
     const authToken = req.headers.authorization.split(" ")[1];
     const decodedToken = jwt.verify(authToken, secret);
     req.authInfo = decodedToken;
+    console.log(decodedToken);
     next();
   } catch (error) {
     res.status(401);
-    res.send("Error de autenticación");
+    res.send("Debe autenticarse para realizar esta acción");
   }
 };
 isAdmin = (req, res, next) => {
@@ -72,7 +73,7 @@ server.post("/login", async (req, res) => {
           password: pass,
         },
       }
-    );
+    );    
     if (identificaUsuario.length !== 0) {      
       const token = jwt.sign(identificaUsuario[0], secret);
       console.log("Bienvenido", nickname);
@@ -89,8 +90,8 @@ server.post("/login", async (req, res) => {
 });
 //Registro
 server.post("/registro", async (req, res) => {
-  const {nickname,nombre,apellido,telefono,direccion,password,} = req.body;  
-  console.log(await utils.isNicknameAvailable(nickname));
+  const {nickname,nombre,apellido,telefono,direccion,password} = req.body;  
+  
   if (nickname.length < 3 || nickname.length > 25) {
     res.status(400);
     res.json("Nombre de usuario incorrecto (Muy corto o muy largo)");
@@ -252,6 +253,21 @@ server.get("/pedidos/:id", authorization, async (req, res) => {
 server.post("/pedidos", authorization, async (req, res) => {
   try {
     const { detalle, forma_pago, total } = req.body;
+    if(!detalle){
+      res.status(400);
+      res.json("Debe ingresar el detalle del pedido")
+      return
+    } 
+    if(isNaN(forma_pago)){
+      res.status(400);
+      res.json("forma_pago debe ser un valor numerico o no fue ingresada")
+      return
+    } 
+    if(isNaN(total)){
+      res.status(400);
+      res.json("total debe ser un valor numerico o no fue ingresado")
+      return
+    }
     let pad = function (num) {
       return ("00" + num).slice(-2);
     };
@@ -283,6 +299,11 @@ server.post("/pedidos", authorization, async (req, res) => {
     );
     const id_pedido = consulta[0];
     detalle.forEach(async (plato) => {
+      if(!plato || !plato.id_plato || !plato.id_pedido || !plato.cantidad){
+        res.status(400);
+        res.json("El formato del detalle es incorrecto");
+        return
+      }
       await db.sequelize.query(
         "INSERT INTO platosPorPedidos (id_plato,id_pedido,cantidad) VALUES (:id_plato, :id_pedido, :cantidad)",
         {
@@ -626,16 +647,7 @@ server.get("/usuarios/:id", authorization, noUserNoAdmin, async (req, res) => {
 server.patch("/usuarios/:id",authorization,noUserNoAdmin,async (req, res) => {
     try {
       const id = req.params.id;
-      const {nickname,nombre,apellido,telefono,direccion,password,isAdmin} = req.body;
-      if (!nickname || nickname.length < 3) {
-        res.status(400);
-        res.json("Nickname no ingresado o demasiado corto");
-        return;
-      } else if(await utils.isNicknameAvailable(nickname) === false){    
-        res.status(400);
-        res.json("El usuario ingresado ya existe. Pruebe con otro");
-        return
-      }
+      const {nickname,nombre,apellido,telefono,direccion,password,isAdmin} = req.body;            
       if (!nombre || nombre === "") {
         res.status(400);
         res.json("Debe ingresar el nombre");
@@ -666,14 +678,7 @@ server.patch("/usuarios/:id",authorization,noUserNoAdmin,async (req, res) => {
         return;
       }
       const pass = utils.MD5(password);
-      if (req.isAdmin === 1) {
-        if (!isAdmin) {
-          res.status(400);
-          res.json(
-            "Debe asignar un valor para determinar si el usuario es administrador o no"
-          );
-          return;
-        }
+      if (req.authInfo.isAdmin === 1) {        
         if (isNaN(isAdmin)) {
           res.status(400);
           res.json(
@@ -682,15 +687,10 @@ server.patch("/usuarios/:id",authorization,noUserNoAdmin,async (req, res) => {
           return;
         }
         let consulta = await db.sequelize.query(
-          "UPDATE usuarios SET nickname = :nickname, nombre = :nombre, apellido = :apellido, telefono = :telefono, direccion = :direccion, password = :password, isAdmin = :isAdmin WHERE id = :id ",
+          "UPDATE usuarios SET isAdmin = :isAdmin WHERE id = :id ",
           {
-            replacements: {
-              nickname: nickname,
-              nombre: nombre,
-              apellido: apellido,
-              telefono: telefono,
-              direccion: direccion,
-              password: pass,
+            replacements: {              
+              id: id,
               isAdmin: isAdmin,
             },
             type: db.sequelize.QueryTypes.UPDATE,
@@ -700,6 +700,17 @@ server.patch("/usuarios/:id",authorization,noUserNoAdmin,async (req, res) => {
         console.log("Usuario actualizado correctamente");
         res.json(consulta);
       } else {
+        if (!nickname || nickname.length < 3) {
+          res.status(400);
+          res.json("Nickname no ingresado o demasiado corto");
+          return;
+        } else if(await utils.isNicknameAvailable(nickname) === false){   
+          if(!req.authInfo.nickname === nickname){
+            res.status(400);
+            res.json("El usuario ingresado ya existe. Pruebe con otro");
+            return
+          }         
+        }
         let consulta = await db.sequelize.query(
           "UPDATE usuarios SET nickname = :nickname, nombre = :nombre, apellido = :apellido, telefono = :telefono, direccion = :direccion, password = :password WHERE id = :id ",
           {
