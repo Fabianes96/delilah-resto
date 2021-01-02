@@ -276,12 +276,12 @@ paths:
             applitcation/json:
               example: No puede realizar esta acción
         404:
-          description: Plato no encontrado
+          description: Pedido no encontrado
           content:
             application/json:
               schema:
                 type: string
-                example: El plato no fue encontrado
+                example: El pedido no fue encontrado
     patch:
       description: Actualiza el estado de un pedido en especifico
       summary: Actualizar estado de un pedido
@@ -326,7 +326,7 @@ paths:
             applitcation/json:
               example: Debe autenticarse para realizar esta acción
         404:
-          description: Plato no encontrado
+          description: Pedido no encontrado
           content:
             application/json:
               schema:
@@ -453,7 +453,7 @@ paths:
               example: Debe ingresar el nombre
         
         404:
-          description: Plato no encontrado
+          description: Usuario no encontrado
           content:
             application/json:
               schema:

@@ -165,7 +165,7 @@ server.get("/pedidos", authorization, isAdmin, async (req, res) => {
         SELECT estadosPedidos.estado,
             fecha,
             pedidos.id AS numero,
-            GROUP_CONCAT(CONCAT(cantidad, 'X ', plato.nombre) SEPARATOR ',') AS detalle,
+            GROUP_CONCAT(CONCAT(cantidad, 'X ', platos.nombre) SEPARATOR ',') AS detalle,
             Forma AS forma_de_pago,
             total,
             CONCAT(usuarios.nombre, ' ', apellido) AS usuario,            
@@ -179,8 +179,8 @@ server.get("/pedidos", authorization, isAdmin, async (req, res) => {
             ON pedidos.estado = estadosPedidos.id
             JOIN platosPorPedidos
             ON pedidos.id = platosPorPedidos.id_pedido 
-            JOIN plato
-            ON plato.id = platosPorPedidos.id_plato
+            JOIN platos
+            ON platos.id = platosPorPedidos.id_plato
             GROUP BY numero            
         `,
       {
@@ -214,7 +214,7 @@ server.get("/pedidos/:id", authorization, async (req, res) => {
         SELECT estadosPedidos.estado,
             fecha,
             pedidos.id AS numero,
-            GROUP_CONCAT(CONCAT(cantidad, 'X ', plato.nombre) SEPARATOR ',') AS detalle,
+            GROUP_CONCAT(CONCAT(cantidad, 'X ', platos.nombre) SEPARATOR ',') AS detalle,
             Forma AS forma_de_pago,
             total,
             CONCAT(usuarios.nombre, ' ', apellido) AS usuario,            
@@ -228,8 +228,8 @@ server.get("/pedidos/:id", authorization, async (req, res) => {
             ON pedidos.estado = estadosPedidos.id
             JOIN platosPorPedidos
             ON pedidos.id = platosPorPedidos.id_pedido 
-            JOIN plato
-            ON plato.id = platosPorPedidos.id_plato
+            JOIN platos
+            ON platos.id = platosPorPedidos.id_plato
             WHERE pedidos.id = :id
             GROUP BY numero
         `,
@@ -240,7 +240,11 @@ server.get("/pedidos/:id", authorization, async (req, res) => {
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
-    
+    if(consulta.length === 0){
+      res.status(404);
+      res.json("El pedido no fue encontrado");
+      return
+    }
     console.log("Pedido #", id);
     res.status(200);
     res.json(consulta);
@@ -340,6 +344,11 @@ server.patch("/pedidos/:id", authorization, isAdmin, async(req,res) => {
                 estado: estado
             }, type: db.sequelize.QueryTypes.UPDATE
         });
+        if(consulta.length === 0){
+          res.status(404);
+          res.json("Pedido no encontrado");
+          return
+        }
         res.status(200);
         res.json(consulta);        
     } catch (error) {
@@ -355,6 +364,11 @@ server.delete("/pedidos/:id",authorization,isAdmin, async(req,res) => {
                 id: id
             },type: db.sequelize.QueryTypes.DELETE
         });
+        if(consulta.length === 0){
+          res.status(404);
+          res.json("El pedido no existe");
+          return
+        }
         res.status(200);
         res.json(consulta);
     } catch (error) {
@@ -368,7 +382,7 @@ server.delete("/pedidos/:id",authorization,isAdmin, async(req,res) => {
 server.get("/platos", async (req, res) => {
   try {
     let response = await db.sequelize.query(
-      "SELECT nombre, precio, imagen FROM plato",
+      "SELECT nombre, precio, imagen FROM platos",
       { type: db.sequelize.QueryTypes.SELECT }
     );
     res.json(response);
@@ -381,7 +395,7 @@ server.get("/platos/:id", async (req, res) => {
   try {
     const id = req.params.id;
     let respuesta = await db.sequelize.query(
-      "SELECT nombre, precio, imagen FROM plato WHERE id = :id",
+      "SELECT nombre, precio, imagen FROM platos WHERE id = :id",
       {
         replacements: {
           id: id,
@@ -389,6 +403,11 @@ server.get("/platos/:id", async (req, res) => {
         type: db.sequelize.QueryTypes.SELECT,
       }
     );
+    if(respuesta.length === 0){
+      res.status(404);
+      res.json("El plato no fue encontrado");
+      return
+    }
     res.status(200);
     res.json(respuesta);
   } catch (error) {
@@ -421,7 +440,7 @@ server.post("/platos", authorization, isAdmin, async (req, res) => {
     }
     if (imagen !== "" && imagen !== undefined) {
       let consulta = await db.sequelize.query(
-        "INSERT INTO plato (nombre, precio, imagen) VALUES (:nombre, :precio, :imagen)",
+        "INSERT INTO platos (nombre, precio, imagen) VALUES (:nombre, :precio, :imagen)",
         {
           replacements: {
             nombre: nombre,
@@ -435,7 +454,7 @@ server.post("/platos", authorization, isAdmin, async (req, res) => {
       res.json(consulta);
     } else {
       let consulta = await db.sequelize.query(
-        "INSERT INTO plato (nombre, precio) VALUES (:nombre, :precio)",
+        "INSERT INTO platos (nombre, precio) VALUES (:nombre, :precio)",
         {
           replacements: {
             nombre: nombre,
@@ -456,12 +475,17 @@ server.post("/platos", authorization, isAdmin, async (req, res) => {
 server.delete("/platos/:id", authorization, isAdmin, async (req, res) => {
   try {
     const id = req.params.id;
-    let respuesta = db.sequelize.query("DELETE FROM plato WHERE id = :id", {
+    let respuesta = db.sequelize.query("DELETE FROM platos WHERE id = :id", {
       replacements: {
         id: id,
       },
       type: db.sequelize.QueryTypes.DELETE,
     });
+    if(respuesta.length === 0){
+      res.status(404);
+      res.json("El plato no fue encontrado");
+      return
+    }
     res.status(200);
     console.log("Plato borrado");
     res.json(respuesta);
@@ -481,7 +505,7 @@ server.patch("/platos/:id", authorization, isAdmin, async (req, res) => {
     }
     const consulta = db.sequelize;
     const id = req.params.id;
-    const consultaInicio = "UPDATE plato SET";
+    const consultaInicio = "UPDATE platos SET";
     const consultaFin = " WHERE id = :id";
     if (nombre && precio && imagen) {
       let respuesta = consulta.query(
@@ -622,6 +646,11 @@ server.get("/usuarios/:id", authorization, noUserNoAdmin, async (req, res) => {
           type: db.sequelize.QueryTypes.SELECT,
         }
       );
+      if(consulta.length === 0){
+        res.status(404);
+        res.json("El usuario no fue encontrado");
+        return
+      }
       res.status(200);
       console.log("Usuario devuelto con exito");
       res.json(consulta);
@@ -696,6 +725,11 @@ server.patch("/usuarios/:id",authorization,noUserNoAdmin,async (req, res) => {
             type: db.sequelize.QueryTypes.UPDATE,
           }
         );
+        if(consulta.length === 0){
+          res.status(404);
+          res.json("El usuario no fue encontrado");
+          return
+        }
         res.status(200);
         console.log("Usuario actualizado correctamente");
         res.json(consulta);
@@ -749,6 +783,11 @@ server.delete("/usuarios/:id",authorization,noUserNoAdmin,async (req, res) => {
           type: db.sequelize.QueryTypes.DELETE,
         }
       );
+      if(consulta.length === 0){
+        res.status(404);
+        res.json("El usuario no existe");
+        return
+      }
       res.status(200);
       console.log("Usuario eliminado");
       res.json(consulta);
