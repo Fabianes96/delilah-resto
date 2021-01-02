@@ -11,8 +11,8 @@ Finalmente dar clic en 'Continuar'.
 ![screenshot1](https://user-images.githubusercontent.com/42284483/103461969-084c1d00-4cf0-11eb-9e38-585c6ef9852c.jpg)
 
 Para inicializar el servidor primero se deben instalar las dependencias necesarias. Por tanto es necesario ejecutar el comando `npm install` por medio de una terminal ubicando la ruta donde se encuentra el proyecto.  
-Luego de instalar las dependecias se puede proceder a ejecutar el servidor por medio del comando `node server.js`.
-Finalmente con el servidor inicializado y con phpmyadmin ejecutándose se tiene todo preparado para realizar las pruebas sobre los endpoints utilizando postman.
+Luego de instalar las dependecias se puede proceder a ejecutar el servidor por medio del comando `node server.js`. El servidor estará escuchando entonces las conexiones a través del puerto 3000.
+Finalmente con el servidor inicializado y con phpmyadmin ejecutándose se tiene todo preparado para realizar las pruebas sobre los endpoints utilizando postman en la ruta http://localhost:3000/.
 Para la autenticación de usuarios se utilizó JWT, por lo que si se quiere probar los endpoints con un usuario administrador se puede utilizar el JWT correspondiente, al loguearse con las siguientes credenciales: { "nickname": "usuario_admin", "password": "admin" }.
 Este JWT se debe escribir en el campo de las cabeceras de la petición (Headers) añadiendo una _key_ 'Authorization' con _value_ Bearer + el JWT correspondiente.
 
